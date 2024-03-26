@@ -1,10 +1,13 @@
 import { StrictMode } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
+import Error from './Error'
+
 const routes = createBrowserRouter([
   {
     path: '/',
     element: <div>Hello world!</div>,
+    errorElement: <Error />,
   },
   {
     path: '/react',
