@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import Error from './Error'
@@ -16,11 +15,7 @@ const routes = createBrowserRouter([
 ])
 
 function App() {
-  return (
-    <StrictMode>
-      <RouterProvider router={routes} />
-    </StrictMode>
-  )
+  return <RouterProvider router={routes} />
 }
 
 export default App
