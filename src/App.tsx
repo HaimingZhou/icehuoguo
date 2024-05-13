@@ -2,7 +2,6 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import Error from './Error'
 
-import Hanoi from './pages/toyBox/Hanoi'
 
 const routes = createBrowserRouter([
   {
@@ -13,10 +12,6 @@ const routes = createBrowserRouter([
   {
     path: '/react',
     element: <div>Hello react!</div>,
-  },
-  {
-    path: '/hanoi',
-    element: <Hanoi />,
   },
 ])
 
