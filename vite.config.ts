@@ -9,9 +9,14 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:9793',
+        target: 'http://localhost:1119',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/static': {
+        target: 'http://localhost:1119',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/static/, '/static'),
       },
     },
   },
