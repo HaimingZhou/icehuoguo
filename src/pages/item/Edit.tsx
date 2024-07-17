@@ -1,38 +1,46 @@
-import { Button, CascadePicker, Form, Input, NavBar, Skeleton, TextArea, Toast } from 'antd-mobile'
-import { omit } from 'lodash'
+import { Button, CascadePicker, Form, Input, NavBar, Picker, Skeleton, Toast } from 'antd-mobile'
+import { AddCircleOutline } from 'antd-mobile-icons'
 import React, { type RefObject, useEffect, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useBoolean } from 'react-use'
 import useSWR from 'swr'
 
 import type { CascadePickerRef } from 'antd-mobile'
 
-import {
-  checkTypeMappingCode,
-  createTypeMapping,
-  queryTypeMapping,
-  queryTypeMappingByCode,
-  updateTypeMapping,
-} from '../../services/apis/typeMapping'
+import { queryContainers } from '../../services/apis/container'
+import { createItem, queryByCode, updateItem } from '../../services/apis/item'
+import { checkTypeMappingCode, queryTypeMapping } from '../../services/apis/typeMapping'
 import { getPath, parseTree } from '../../utils/utils.ts'
 
-const ItemEdit: React.FC = () => {
-  const [searchParams] = useSearchParams()
-  const oriCode = searchParams.get('code')
+import type { ItemParams } from '../../services/type'
+
+const EditItem: React.FC = () => {
+  const { code: oriCode } = useParams()
   const navigate = useNavigate()
 
   const [form] = Form.useForm()
 
-  const { data } = useSWR('query-type-mapping', queryTypeMapping)
+  const { data: typeDatas } = useSWR('query-type-mapping', queryTypeMapping)
+  const { data: containerDatas } = useSWR('query-containers', () => queryContainers())
 
-  const options = useMemo(() => {
+  const typeOpts = useMemo(() => {
     return parseTree(
-      data?.data ?? [],
+      typeDatas?.data ?? [],
       (item) => item.code,
       (item) => item.parentCode,
-      (item) => ({ label: item.name, value: item.code }),
+      (item) => ({ label: item.name, value: item._id }),
     ) as unknown as { label: string; value: string }[]
-  }, [data])
+  }, [typeDatas])
+
+  const containerOpts = useMemo(() => {
+    return (
+      containerDatas?.data?.map((item) => ({
+        key: item.code,
+        label: item.name,
+        value: item._id!,
+      })) ?? []
+    )
+  }, [containerDatas])
 
   const [submitLoading, setSubmitLoading] = useBoolean(false)
 
@@ -44,10 +52,10 @@ const ItemEdit: React.FC = () => {
   }, [oriCode, form])
 
   const { data: detailData, isLoading: detailLoading } = useSWR(
-    `query-type-mapping-by-code-${oriCode}`,
+    `query-item-by-code-${oriCode}`,
     () => {
       if (!oriCode) return
-      return queryTypeMappingByCode(oriCode)
+      return queryByCode(oriCode)
     },
     {
       onSuccess: (data) => {
@@ -55,27 +63,31 @@ const ItemEdit: React.FC = () => {
         form.setFieldsValue({
           code: data.data.code,
           name: data.data.name,
-          level: data.data.level,
-          desc: data.data.desc,
+          url: data.data.url,
+          metaData: data.data.metaData,
+          relatedContainer: data.data?.relatedContainer?._id
+            ? [data.data?.relatedContainer?._id]
+            : [],
         })
       },
     },
   )
 
   useEffect(() => {
-    if (options?.length && detailData?.data?.parentCode) {
-      const list = data?.data ?? []
+    if (typeOpts?.length && detailData?.data?.type?._id) {
+      const list = typeDatas?.data ?? []
       const path = getPath(
         list,
-        (item) => item.code,
-        (item) => item.parentCode,
-        detailData.data.code,
+        (item) => item._id ?? '',
+        (item) => list.find((sub) => sub.code === item.parentCode)?._id ?? '',
+        detailData.data.type?._id,
       )
-      form.setFieldValue('parentCode', path?.map((item) => item.code) ?? [])
-    }
-  }, [detailData?.data?.parentCode, options?.toString()])
 
-  const onFinish = async (values: any) => {
+      form.setFieldValue('type', path?.map((item) => item._id) ?? [])
+    }
+  }, [detailData?.data?.type?._id, typeOpts?.toString()])
+
+  const onFinish = async (values: Omit<ItemParams, 'type'> & { type: string[] }) => {
     setSubmitLoading(true)
     if (!oriCode) {
       const { data: isDuplicate } = await checkTypeMappingCode(values.code)
@@ -90,22 +102,24 @@ const ItemEdit: React.FC = () => {
         return
       }
     }
-    const parentCodeLength = values?.parentCode?.length
-    const parentCode = values?.parentCode?.length
-      ? values.parentCode[parentCodeLength - 2]
-      : undefined
+    const types = values?.type?.filter((item) => !!item) ?? []
+    const typeLength = types.length
+    const type = typeLength ? types[typeLength - 1] : undefined
     if (oriCode) {
-      await updateTypeMapping({
-        ...omit(values, ['parentNames', 'parentCode']),
-        parentCode,
-        id: detailData?.data?._id as string,
+      await updateItem({
+        ...values,
+        relatedContainer: values.relatedContainer?.[0],
+        metaData: values.metaData?.filter((item) => Object.keys(item).length) ?? [],
+        type,
       }).finally(() => {
         setSubmitLoading(false)
       })
     } else {
-      await createTypeMapping({
-        ...omit(values, ['parentNames', 'parentCode']),
-        parentCode,
+      await createItem({
+        ...values,
+        relatedContainer: values.relatedContainer?.[0],
+        metaData: values.metaData?.filter((item) => Object.keys(item).length) ?? [],
+        type,
       }).finally(() => {
         setSubmitLoading(false)
       })
@@ -114,12 +128,15 @@ const ItemEdit: React.FC = () => {
       icon: 'success',
       content: '保存成功',
     })
-    navigate('/type-mapping/list', { replace: true })
+    navigate('/item/list', { replace: true })
   }
 
   return (
     <>
-      <NavBar onBack={() => navigate('/type-mapping/list', { replace: true })}>
+      <NavBar
+        style={{ backgroundColor: 'white' }}
+        onBack={() => navigate('/item/list', { replace: true })}
+      >
         物品{!oriCode ? '新增' : '编辑'}
       </NavBar>
       {!!oriCode && detailLoading && <Skeleton.Paragraph lineCount={5} animated />}
@@ -127,6 +144,10 @@ const ItemEdit: React.FC = () => {
         <Form
           layout="horizontal"
           form={form}
+          mode="card"
+          initialValues={{
+            metaData: [{}],
+          }}
           footer={
             <Button block type="submit" loading={submitLoading} color="primary">
               提交
@@ -134,6 +155,7 @@ const ItemEdit: React.FC = () => {
           }
           onFinish={onFinish}
         >
+          <Form.Header>基本信息</Form.Header>
           <Form.Item
             name="code"
             label="编码"
@@ -145,19 +167,15 @@ const ItemEdit: React.FC = () => {
           <Form.Item name="name" label="名称" rules={[{ required: true, message: '名称不能为空' }]}>
             <Input placeholder="请输入名称" clearable />
           </Form.Item>
-          <Form.Item name="level" label="级别" initialValue={1} hidden>
-            <Input />
-          </Form.Item>
           <Form.Item
-            name="parentCode"
-            label="父级"
+            name="type"
+            label="类型"
             trigger="onConfirm"
-            disabled={!!oriCode}
             onClick={(_, cascadePickerRef: RefObject<CascadePickerRef>) => {
               cascadePickerRef.current?.open()
             }}
           >
-            <CascadePicker options={options}>
+            <CascadePicker options={typeOpts}>
               {(value) => {
                 return (
                   value
@@ -168,13 +186,62 @@ const ItemEdit: React.FC = () => {
               }}
             </CascadePicker>
           </Form.Item>
-          <Form.Item name="desc" label="描述" rules={[{ required: true, message: '描述不能为空' }]}>
-            <TextArea placeholder="请输入描述" maxLength={100} rows={2} showCount />
+          <Form.Item name="url" label="URL">
+            <Input />
           </Form.Item>
+          <Form.Item
+            name="relatedContainer"
+            label="容器"
+            trigger="onConfirm"
+            onClick={(_, pickerRef: RefObject<CascadePickerRef>) => {
+              pickerRef.current?.open()
+            }}
+          >
+            <Picker columns={[containerOpts]}>
+              {(value) => {
+                return (
+                  value
+                    ?.map((v) => v?.label)
+                    ?.filter((item) => !!item)
+                    ?.join(',') || '请选择'
+                )
+              }}
+            </Picker>
+          </Form.Item>
+          <Form.Array
+            name="metaData"
+            onAdd={(operation) => operation.add({})}
+            renderAdd={() => (
+              <span>
+                <AddCircleOutline /> 添加
+              </span>
+            )}
+            renderHeader={({ index }, { remove }) => (
+              <>
+                <span>扩展字段{index + 1}</span>
+                <a onClick={() => remove(index)} style={{ float: 'right' }}>
+                  删除
+                </a>
+              </>
+            )}
+          >
+            {(fields) =>
+              fields.map(({ index }) => (
+                <>
+                  <Form.Item name={[index, 'label']} label="label">
+                    <Input placeholder="请输入" />
+                  </Form.Item>
+                  <Form.Item name={[index, 'value']} label="value">
+                    <Input placeholder="请输入" />
+                  </Form.Item>
+                </>
+              ))
+            }
+          </Form.Array>
         </Form>
       )}
     </>
   )
 }
 
-export default ItemEdit
+export default EditItem

@@ -28,7 +28,7 @@ const Layout: React.FC = () => {
             <HeartOutline /> 离涅小窝
           </div>
         }
-        style={{ marginBottom: 60 }}
+        style={{ marginBottom: 60, background: 'transparent' }}
       />
       <TabBar
         style={{
@@ -37,7 +37,9 @@ const Layout: React.FC = () => {
           bottom: 0,
           width: '100%',
           borderTop: '1px solid #eee',
+          zIndex: 999,
         }}
+        activeKey={location.pathname.split('/')[1]}
         onChange={(key) => navigate(`/${key}/list`)}
       >
         {tabs.map((item) => (

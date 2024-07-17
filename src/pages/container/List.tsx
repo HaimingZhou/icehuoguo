@@ -1,4 +1,5 @@
-import { Image, List, NavBar, SearchBar, Skeleton } from 'antd-mobile'
+import { Button, Image, List, NavBar, SearchBar, Skeleton } from 'antd-mobile'
+import { EditSOutline } from 'antd-mobile-icons'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
@@ -16,7 +17,9 @@ const ContainerList: React.FC = () => {
 
   return (
     <>
-      <NavBar back={null}>容器列表</NavBar>
+      <NavBar style={{ backgroundColor: 'white' }} back={null}>
+        容器列表
+      </NavBar>
       <div
         style={{
           backgroundColor: '#f5f5f5',
@@ -40,11 +43,22 @@ const ContainerList: React.FC = () => {
             key={item.code}
             prefix={
               <div style={{ padding: '4px 0 ' }}>
-                <Image src={item.url} style={{ borderRadius: 4 }} fit="cover" height={80} />
+                <Image src={item.previewUrl} style={{ borderRadius: 4 }} fit="cover" height={80} />
               </div>
             }
             title={`No.${item?.code}`}
-            extra={`x${1}`}
+            extra={
+              <Button
+                color="primary"
+                fill="none"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate(`/container/edit/${item?.code}`)
+                }}
+              >
+                <EditSOutline />
+              </Button>
+            }
             onClick={() => navigate(`/container/detail/${item?.code}`)}
           >
             {item?.name}

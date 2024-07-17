@@ -1,8 +1,9 @@
-import { Image, List, NavBar, SearchBar, Skeleton } from 'antd-mobile'
+import { Button, Image, List, NavBar, SearchBar, Skeleton } from 'antd-mobile'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
 
+import { EditSOutline } from 'antd-mobile-icons'
 import { queryItems } from '../../services/apis/item'
 
 const ItemList: React.FC = () => {
@@ -14,7 +15,9 @@ const ItemList: React.FC = () => {
 
   return (
     <>
-      <NavBar back={null}>物品列表</NavBar>
+      <NavBar style={{ backgroundColor: 'white' }} back={null}>
+        物品列表
+      </NavBar>
       <div
         style={{
           backgroundColor: '#f5f5f5',
@@ -38,11 +41,22 @@ const ItemList: React.FC = () => {
             key={item.code}
             prefix={
               <div style={{ padding: '4px 0 ' }}>
-                <Image src={item.url} style={{ borderRadius: 4 }} fit="cover" height={80} />
+                <Image src={item.previewUrl} style={{ borderRadius: 4 }} fit="cover" height={80} />
               </div>
             }
             title={`No.${item?.code}`}
-            extra={`x${1}`}
+            extra={
+              <Button
+                color="primary"
+                fill="none"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate(`/item/edit/${item?.code}`)
+                }}
+              >
+                <EditSOutline />
+              </Button>
+            }
             onClick={() => navigate(`/item/detail/${item?.code}`)}
           >
             {item?.name}
